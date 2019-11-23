@@ -6,6 +6,7 @@ import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.Buffer;
 
 public class Controller extends JPanel {
     private View view;
@@ -17,6 +18,7 @@ public class Controller extends JPanel {
 
     public Controller() {
         this.view = new View(this);
+        view.setExtendedState(Frame.MAXIMIZED_BOTH);
         //anon class to allow th user to upload an image
         view.uploadButton.addActionListener(new ActionListener() {
             @Override
@@ -30,11 +32,9 @@ public class Controller extends JPanel {
         view.analyzeButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                view.livePixelButton.setVisible(true);
                 model = new Model(bufferedImage);
                 view.analyzeButton.setVisible(false);
-                view.livePixelButton.setVisible(true);
-                setViewColors();
+                setViewColor();
                 canClickBool = true;
                 view.radioPanel.setVisible(true);
             }
@@ -43,16 +43,17 @@ public class Controller extends JPanel {
         view.imageIcon.addMouseListener(new MouseListener() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                start = e.getPoint();
-                int x = start.x;
-                int y = start.y;
+                if(canClickBool) {
+                    start = e.getPoint();
+                    int x = start.x;
+                    int y = start.y;
 
-                int colorAtClick = model.getRGBatPixel(x, y);
-                int[] rgbColors = model.getRGBArray(colorAtClick);
-                //String rgbStr = Integer.toHexString(rgbColors[0]) + Integer.toHexString(rgbColors[1]) + Integer.toHexString(rgbColors[2]);
+                    int colorAtClick = model.getRGBatPixel(x, y);
+                    int[] rgbColors = model.getRGBArray(colorAtClick);
 
-                view.color1.setBackground(new Color(rgbColors[0], rgbColors[1], rgbColors[2]));
-                view.color1.setText("R: " + rgbColors[0] + " G: " + rgbColors[1] + " B: " + rgbColors[2]);
+                    view.color1.setBackground(new Color(rgbColors[0], rgbColors[1], rgbColors[2]));
+                    view.color1.setText("R: " + rgbColors[0] + " G: " + rgbColors[1] + " B: " + rgbColors[2]);
+                }
             }
 
             @Override
@@ -66,22 +67,30 @@ public class Controller extends JPanel {
 
             @Override
             public void mouseEntered(MouseEvent e){
-                int x = e.getX();
-                int y = e.getY();
-                System.out.println("mouse entered");
-                Cursor cursor1 = view.imageIcon.getCursor();
-                    if(canClickBool){
-                    //view.imageIcon.setCursor(Toolkit.getDefaultToolkit().createCustomCursor(new ImageIcon("images/dropper.png").getImage(), new Point(0, 0), "dropper"));
+                if(canClickBool){
                     view.imageIcon.setCursor(new Cursor(Cursor.CROSSHAIR_CURSOR));
-                    //setSize(100, 100);
-                    }else{
-                    setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                }else{
+                    view.imageIcon.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                 }
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
 
+            }
+        });
+
+        view.negativeRadioButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                BufferedImage negativeBufferedImage = bufferedImage;
+                negativeBufferedImage = model.makeImageNegative(negativeBufferedImage);
+
+                Image negativeImage = negativeBufferedImage.getScaledInstance(view.imageIcon.getWidth(), view.imageIcon.getHeight(), Image.SCALE_SMOOTH);
+
+                ImageIcon icon = new ImageIcon(negativeImage);
+                view.imageIcon.setIcon(icon);
+                canClickBool = false;
             }
         });
 
@@ -92,11 +101,10 @@ public class Controller extends JPanel {
                 blackWhiteBufferedImage = model.makeImageGrayscale(blackWhiteBufferedImage);
 
                 Image blackWhiteImage = blackWhiteBufferedImage.getScaledInstance(view.imageIcon.getWidth(), view.imageIcon.getHeight(), Image.SCALE_SMOOTH);
-                //blackWhiteImage = resize(blackWhiteImage, view.imageIcon.getWidth(), view.imageIcon.getHeight());
 
                 ImageIcon icon = new ImageIcon(blackWhiteImage);
-                view.imageIcon.setBackground(Color.lightGray);
                 view.imageIcon.setIcon(icon);
+                canClickBool = false;
             }
         });
 
@@ -105,8 +113,6 @@ public class Controller extends JPanel {
             public void actionPerformed(ActionEvent e) {
                 ImageIcon icon = new ImageIcon(image);
                 view.imageIcon.setIcon(icon);
-                model = new Model(bufferedImage);
-
             }
         });
 
@@ -144,30 +150,17 @@ public class Controller extends JPanel {
         }
     }
 
-    private void setViewColors(){
-        String color1 = setHexString(model.colorHex1);
-        view.color1.setBackground(Color.decode(color1));
-        view.color1.setText(color1);
+    private void setViewColor(){
+        int[] rgb = model.colorHex1;
+        view.color1.setBackground(new Color(rgb[0], rgb[1], rgb[2]));
+        view.color1.setText("R: " + rgb[0] + " G: " + rgb[1] + " B: " + rgb[2]);
     }
 
-    private String setHexString(String originalString){
-        String newHexString = "";
-        String zero = "0";
-
-        for(int i = 0; i < originalString.length(); i++){
-            newHexString += originalString.charAt(i);
-            if(originalString.charAt(i) == '0'){
-                newHexString += zero;
-            }
-        }
-        return "#" + newHexString;
-    }
-
-    private BufferedImage resize(BufferedImage image, int w, int h){
+    private BufferedImage resize(BufferedImage image, int w, int h) {
         Image temp = image.getScaledInstance(w, h, Image.SCALE_SMOOTH);
         BufferedImage newImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics2D = newImage.createGraphics();
-        graphics2D.drawImage(temp, 0, 0, null);
+        graphics2D.drawImage(temp, 0, 0, w, h,null);
 
         return newImage;
     }
